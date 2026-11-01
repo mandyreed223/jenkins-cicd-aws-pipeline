@@ -15,6 +15,22 @@ pipeline {
             }
         }
 
+        stage('AWS Identity') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'aws-ecr-credentials',
+                usernameVariable: 'AWS_ACCESS_KEY_ID',
+                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            )
+        ]) {
+            sh '''
+                echo "Verifying Jenkins AWS identity..."
+                aws sts get-caller-identity
+            '''
+        }
+    }
+
         stage('Build') {
             steps {
                 sh '''
