@@ -280,9 +280,7 @@ The locally built image was then tagged for ECR:
 
 ```text
 cloudops-app:BUILD_NUMBER
-
         ↓
-
 AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/cloudops-app:BUILD_NUMBER
 ```
 
@@ -296,7 +294,7 @@ Build
 Test
   ↓
 PASS?
-  ├── No  → STOP
+  ├── No → STOP
   │
   └── Yes
        ↓
@@ -517,13 +515,13 @@ It received something else.
 The result:
 
 ```text
-Checkout       ✅
-AWS Identity   ✅
-Docker Build   ✅
+Checkout         ✅
+AWS Identity     ✅
+Docker Build     ✅
 Application Test ❌
 
-ECR Push       SKIPPED
-ECS Deploy     SKIPPED
+ECR Push         SKIPPED
+ECS Deploy       SKIPPED
 ```
 
 This was exactly the behavior I wanted.
