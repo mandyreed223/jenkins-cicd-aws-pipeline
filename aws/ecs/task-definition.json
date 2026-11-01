@@ -6,11 +6,11 @@
   ],
   "cpu": "256",
   "memory": "512",
-  "executionRoleArn": "arn:aws:iam::507880288914:role/cloudops-ecs-task-execution-role",
+  "executionRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/cloudops-ecs-task-execution-role",
   "containerDefinitions": [
     {
       "name": "cloudops-app",
-      "image": "507880288914.dkr.ecr.us-east-1.amazonaws.com/cloudops-app:11",
+      "image": "<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/cloudops-app:<IMAGE_TAG>",
       "essential": true,
       "portMappings": [
         {
