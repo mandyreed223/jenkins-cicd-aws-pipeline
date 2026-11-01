@@ -9,6 +9,10 @@ pipeline {
 
         AWS_REGION = 'us-east-1'
         ECR_REPOSITORY = 'cloudops-app'
+
+        ECS_CLUSTER = 'cloudops-cluster'
+        ECS_SERVICE = 'cloudops-service'
+        ECS_TASK_FAMILY = 'cloudops-app'
     }
 
     stages {
@@ -108,6 +112,106 @@ pipeline {
                 }
             }
         }
+
+        stage('ECS Deploy') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-ecr-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        echo "Preparing ECS deployment..."
+
+                        AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+                            --query Account \
+                            --output text)
+
+                        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                        ECR_IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}"
+
+                        echo "Reading current ECS task definition..."
+
+                        aws ecs describe-task-definition \
+                            --task-definition ${ECS_TASK_FAMILY} \
+                            --region ${AWS_REGION} \
+                            --query taskDefinition \
+                            > current-task-definition.json
+
+                        echo "Creating task definition for build ${BUILD_NUMBER}..."
+
+                        ECR_IMAGE="${ECR_IMAGE}" python3 - <<'PY'
+import json
+import os
+
+with open("current-task-definition.json") as f:
+    task = json.load(f)
+
+task["containerDefinitions"][0]["image"] = os.environ["ECR_IMAGE"]
+
+allowed_fields = [
+    "family",
+    "taskRoleArn",
+    "executionRoleArn",
+    "networkMode",
+    "containerDefinitions",
+    "volumes",
+    "placementConstraints",
+    "requiresCompatibilities",
+    "cpu",
+    "memory",
+    "pidMode",
+    "ipcMode",
+    "proxyConfiguration",
+    "inferenceAccelerators",
+    "ephemeralStorage",
+    "runtimePlatform"
+]
+
+clean_task = {
+    key: task[key]
+    for key in allowed_fields
+    if key in task
+}
+
+with open("new-task-definition.json", "w") as f:
+    json.dump(clean_task, f, indent=2)
+PY
+
+                        echo "Registering new ECS task definition..."
+
+                        NEW_TASK_DEFINITION=$(aws ecs register-task-definition \
+                            --cli-input-json file://new-task-definition.json \
+                            --region ${AWS_REGION} \
+                            --query 'taskDefinition.taskDefinitionArn' \
+                            --output text)
+
+                        echo "New task definition registered."
+
+                        echo "Updating ECS service..."
+
+                        aws ecs update-service \
+                            --cluster ${ECS_CLUSTER} \
+                            --service ${ECS_SERVICE} \
+                            --task-definition "${NEW_TASK_DEFINITION}" \
+                            --region ${AWS_REGION} \
+                            --query 'service.{Service:serviceName,TaskDefinition:taskDefinition,Desired:desiredCount}' \
+                            --output table
+
+                        echo "Waiting for ECS service to become stable..."
+
+                        aws ecs wait services-stable \
+                            --cluster ${ECS_CLUSTER} \
+                            --services ${ECS_SERVICE} \
+                            --region ${AWS_REGION}
+
+                        echo "ECS deployment completed successfully."
+                    '''
+                }
+            }
+        }
     }
 
     post {
@@ -119,11 +223,11 @@ pipeline {
         }
 
         success {
-            echo 'CI pipeline completed successfully. 💚'
+            echo 'CI/CD pipeline completed successfully. 💚'
         }
 
         failure {
-            echo 'CI pipeline failed. Check the stage logs.'
+            echo 'CI/CD pipeline failed. Check the stage logs.'
         }
     }
 }
