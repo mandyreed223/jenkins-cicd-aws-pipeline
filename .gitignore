@@ -1,2 +1,6 @@
 .env
 *.log
+# Windows metadata and temporary files
+*:Zone.Identifier
+*.TMP
+*~RF*
