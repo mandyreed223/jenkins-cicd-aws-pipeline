@@ -16,20 +16,21 @@ pipeline {
         }
 
         stage('AWS Identity') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'aws-ecr-credentials',
-                usernameVariable: 'AWS_ACCESS_KEY_ID',
-                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-            )
-        ]) {
-            sh '''
-                echo "Verifying Jenkins AWS identity..."
-                aws sts get-caller-identity
-            '''
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-ecr-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        echo "Verifying Jenkins AWS identity..."
+                        aws sts get-caller-identity
+                    '''
+                }
+            }
         }
-    }
 
         stage('Build') {
             steps {
@@ -48,14 +49,14 @@ pipeline {
                     docker rm -f ${TEST_CONTAINER} 2>/dev/null || true
 
                     docker run -d \
-                      --name ${TEST_CONTAINER} \
-                      ${IMAGE_NAME}:${BUILD_NUMBER}
+                        --name ${TEST_CONTAINER} \
+                        ${IMAGE_NAME}:${BUILD_NUMBER}
 
                     sleep 2
 
                     docker exec ${TEST_CONTAINER} \
-                      wget -qO- http://localhost \
-                      | grep "Deployment Healthy"
+                        wget -qO- http://localhost \
+                        | grep "Deployment Healthy"
 
                     echo "Application test passed."
                 '''
